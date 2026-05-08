@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShopMind — AI Shopping Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #222222;
+      --border: #2e2e2e;
+      --ink: #f0ebe3;
+      --muted: #6b6560;
+      --accent: #e8c547;
+      --accent-dim: #3a3010;
+      --radius: 14px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--ink);
+    }
+    .logo em {
+      color: var(--accent);
+      font-style: italic;
+      font-weight: 400;
+    }
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11.5px;
+      color: var(--muted);
+      letter-spacing: 0.3px;
+    }
+    .dot-live {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 8px #4ade8088;
+      animation: pulse 2s infinite;
+    }
+
+    /* Chat */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      scroll-behavior: smooth;
+    }
+    #chat::-webkit-scrollbar { width: 3px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Welcome */
+    .welcome {
+      text-align: center;
+      padding: 48px 20px 24px;
+      animation: fadeUp 0.6s ease both;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .welcome-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    .welcome h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 36px;
+      font-weight: 400;
+      line-height: 1.2;
+      margin-bottom: 12px;
+      color: var(--ink);
+    }
+    .welcome h2 em { color: var(--accent); font-style: italic; }
+    .welcome p { color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    .pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--ink);
+    }
+    .pill:hover {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    /* Messages */
+    .msg {
+      display: flex;
+      gap: 12px;
+      animation: fadeUp 0.3s ease both;
+      max-width: 820px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .msg.user { flex-direction: row-reverse; }
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .avatar.ai {
+      background: var(--accent);
+      color: #000;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 16px;
+    }
+    .avatar.user { background: var(--surface2); color: var(--muted); font-size: 12px; }
+    .bubble {
+      max-width: 68%;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 14.5px;
+      line-height: 1.65;
+    }
+    .msg.user .bubble {
+      background: var(--surface2);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-bottom-right-radius: 4px;
+    }
+    .msg.ai .bubble {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Typing */
+    .typing { display: flex; align-items: center; gap: 5px; padding: 12px 16px; }
+    .tdot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: bounce 1.2s infinite;
+    }
+    .tdot:nth-child(2) { animation-delay: 0.2s; }
+    .tdot:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Product cards */
+    .products-wrapper {
+      max-width: 820px;
+      width: 100%;
+      margin: 0 auto;
+      animation: fadeUp 0.4s ease both;
+    }
+    .products-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 44px;
+      margin-bottom: 14px;
+    }
+    .products-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .products-count {
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      padding-left: 44px;
+    }
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+    }
+    .product-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 8px 32px rgba(232,197,71,0.12);
+    }
+    .product-img-wrap {
+      width: 100%;
+      aspect-ratio: 1;
+      background: var(--surface2);
+      overflow: hidden;
+      position: relative;
+    }
+    .product-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s;
+    }
+    .product-card:hover .product-img { transform: scale(1.04); }
+    .img-skeleton {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    .product-info { padding: 10px 12px 12px; }
+    .product-name {
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.4;
+      margin-bottom: 6px;
+      color: var(--ink);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .product-source {
+      font-size: 10.5px;
+      color: var(--muted);
+    }
+    .product-card-error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1;
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 11px;
+      text-align: center;
+      padding: 12px;
+    }
+
+    /* Input */
+    #input-bar {
+      padding: 16px 24px 22px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+    .input-inner {
+      display: flex;
+      gap: 10px;
+      max-width: 820px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      padding: 8px 8px 8px 22px;
+      transition: border-color 0.2s;
+    }
+    .input-inner:focus-within { border-color: var(--accent); }
+    #user-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14.5px;
+      color: var(--ink);
+      outline: none;
+    }
+    #user-input::placeholder { color: var(--muted); }
+    #send-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #000;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    #send-btn:hover { opacity: 0.85; }
+    #send-btn:active { transform: scale(0.92); }
+    #send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Error toast */
+    .error-msg {
+      color: #f87171;
+      font-size: 13px;
+      padding: 10px 14px;
+      background: #2a1010;
+      border: 1px solid #4a1a1a;
+      border-radius: 10px;
+      max-width: 820px;
+      margin: 0 auto;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-7px); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Shop<em>Mind</em></div>
+  <div class="status-dot">
+    <div class="dot-live"></div>
+    AI-powered
+  </div>
+</header>
+
+<div id="chat">
+  <div class="welcome" id="welcome">
+    <span class="welcome-icon">✦</span>
+    <h2>Find anything.<br><em>Instantly.</em></h2>
+    <p>Tell me what you're looking for and I'll pull up real products with images.</p>
+    <div class="suggestions">
+      <div class="pill" onclick="send('Show me some white running shoes')">👟 Running shoes</div>
+      <div class="pill" onclick="send('I want to buy a bouquet of fresh flowers')">🌸 Fresh flowers</div>
+      <div class="pill" onclick="send('Find me a brown leather backpack')">🎒 Leather backpack</div>
+      <div class="pill" onclick="send('I need a pour-over coffee maker')">☕ Coffee maker</div>
+      <div class="pill" onclick="send('Show me cozy throw blankets')">🛋️ Throw blankets</div>
+      <div class="pill" onclick="send('Find me noise-cancelling headphones')">🎧 Headphones</div>
+    </div>
+  </div>
+</div>
+
+<div id="input-bar">
+  <div class="input-inner">
+    <input type="text" id="user-input" placeholder="What are you shopping for?" autocomplete="off" />
+    <button id="send-btn" onclick="send()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  const chatEl = document.getElementById('chat');
+  const inputEl = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+
+  const SYSTEM_PROMPT = `You are ShopMind, a warm and knowledgeable AI shopping assistant. When a user asks for a product:
+
+1. Write a short, helpful 1-2 sentence reply (e.g. "Great choice — here are some options I found!")
+2. Then output a JSON block — and NOTHING after the JSON:
+
+\`\`\`json
+{
+  "searchTerm": "concise Google image search query for this product (e.g. 'white Nike running shoe product')",
+  "products": [
+    { "name": "Descriptive product name, brand-style", "tag": "brief tag like Bestseller, New Arrival, Editor's Pick" },
+    { "name": "...", "tag": "..." }
+  ]
+}
+\`\`\`
+
+Always return exactly 6 products. Make names realistic and specific. The searchTerm will be used for a Google image search, so make it specific and visual — include color, material, style where relevant. Keep your text reply SHORT.`;
+
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  function removeWelcome() {
+    const w = document.getElementById('welcome');
+    if (w) w.remove();
+  }
+
+  function scrollBottom() {
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function addMessage(role, html) {
+    removeWelcome();
+    const msg = document.createElement('div');
+    msg.className = `msg ${role}`;
+    msg.innerHTML = `
+      <div class="avatar ${role}">${role === 'ai' ? 'S' : 'Y'}</div>
+      <div class="bubble">${html}</div>
+    `;
+    chatEl.appendChild(msg);
+    scrollBottom();
+    return msg;
+  }
+
+  function addTyping() {
+    removeWelcome();
+    const msg = document.createElement('div');
+    msg.className = 'msg ai';
+    msg.id = 'typing';
+    msg.innerHTML = `
+      <div class="avatar ai">S</div>
+      <div class="bubble typing">
+        <div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>
+      </div>
+    `;
+    chatEl.appendChild(msg);
+    scrollBottom();
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  async function fetchProducts(searchTerm) {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(searchTerm + ' product')}`);
+    if (!res.ok) throw new Error('Image search failed');
+    return res.json(); // { items: [{title, link, image, displayLink}] }
+  }
+
+  function renderProducts(products, searchItems, searchTerm) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'products-wrapper';
+
+    wrapper.innerHTML = `
+      <div class="products-meta">
+        <div class="products-label">Results</div>
+        <div class="products-count">${products.length} found · "${searchTerm}"</div>
+      </div>
+      <div class="products-grid" id="pgrid"></div>
+    `;
+    chatEl.appendChild(wrapper);
+
+    const grid = wrapper.querySelector('#pgrid');
+
+    products.forEach((p, i) => {
+      const item = searchItems[i];
+      const card = document.createElement('a');
+      card.className = 'product-card';
+      card.href = item?.link || '#';
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer';
+
+      card.innerHTML = `
+        <div class="product-img-wrap">
+          <div class="img-skeleton" id="skel-${i}"></div>
+          ${item?.image
+            ? `<img class="product-img" src="${item.image}" alt="${p.name}"
+                  onload="document.getElementById('skel-${i}')?.remove()"
+                  onerror="this.parentElement.innerHTML='<div class=\'product-card-error\'>Image unavailable</div>'" />`
+            : `<div class="product-card-error">No image</div>`
+          }
+        </div>
+        <div class="product-info">
+          <div class="product-name">${p.name}</div>
+          <div class="product-source">${item?.displayLink || p.tag || ''}</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    scrollBottom();
+  }
+
+  async function send(prefill) {
+    const text = (prefill || inputEl.value).trim();
+    if (!text) return;
+
+    inputEl.value = '';
+    sendBtn.disabled = true;
+    addMessage('user', text);
+    addTyping();
+
+    try {
+      // Step 1: Call Claude via our proxy
+      const chatRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: text }]
+        })
+      });
+
+      const chatData = await chatRes.json();
+      if (!chatRes.ok) throw new Error(chatData.error || 'Chat API error');
+
+      const raw = chatData.content?.[0]?.text || '';
+      removeTyping();
+
+      // Parse text + JSON from Claude response
+      const jsonMatch = raw.match(/```json\s*([\s\S]*?)```/);
+      const textPart = raw.replace(/```json[\s\S]*?```/, '').trim();
+
+      if (textPart) addMessage('ai', textPart);
+
+      if (!jsonMatch) {
+        addMessage('ai', raw || 'Sorry, I had trouble understanding that.');
+        sendBtn.disabled = false;
+        return;
+      }
+
+      let parsed;
+      try { parsed = JSON.parse(jsonMatch[1].trim()); }
+      catch { addMessage('ai', 'Sorry, I had trouble formatting the results.'); sendBtn.disabled = false; return; }
+
+      const { searchTerm, products } = parsed;
+
+      // Step 2: Fetch real images via Google Custom Search proxy
+      addTyping();
+      let searchItems = [];
+      try {
+        const searchData = await fetchProducts(searchTerm);
+        searchItems = searchData.items || [];
+      } catch (e) {
+        console.warn('Image search failed:', e.message);
+      }
+      removeTyping();
+
+      renderProducts(products, searchItems, searchTerm);
+
+    } catch (err) {
+      removeTyping();
+      const errDiv = document.createElement('div');
+      errDiv.className = 'error-msg';
+      errDiv.textContent = `⚠️ ${err.message}`;
+      chatEl.appendChild(errDiv);
+      scrollBottom();
+    }
+
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+</script>
+</body>
+</html>
